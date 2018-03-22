@@ -9,7 +9,7 @@ main = do args <- getArgs
           putStrLn (readExpr (args !! 0))
 
 symbol :: Parser Char
-symbol = oneOf "!$ %&|*+ -/: <=? > @^_ ~ "
+symbol = oneOf "!$%&|*+-/:<=?>@^_~"
 
 readExpr :: String -> String
 readExpr input = case parse parseExpr "lisp" input of
@@ -125,7 +125,7 @@ parseList = liftM List $ sepBy parseExpr spaces
 
 parseDottedList :: Parser LispVal
 parseDottedList = do head <- endBy parseExpr spaces
-                     tail <- char '.' >> spaces >> parseExpr
+                     tail <- (char '.' >> spaces >> parseExpr)
                      return $ DottedList head tail
 
 parseQuoted :: Parser LispVal
@@ -135,13 +135,13 @@ parseQuoted = do char '\''
                  
 parseExpr :: Parser LispVal
 parseExpr = parseAtom
-         <|> parseString
-         <|> parseFloat
-         <|> parseNumber
-         <|> parseChar
-         <|> parseBool
+--         <|> parseString
+--         <|> parseFloat
+--         <|> parseNumber
+--         <|> parseChar
+--         <|> parseBool
          <|> parseQuoted
          <|> do char '('
-                x <- try parseList <|> parseDottedList
+                x <- (try parseList) <|> (parseDottedList)
                 char ')'
                 return x
