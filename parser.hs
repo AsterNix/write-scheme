@@ -27,6 +27,7 @@ data LispVal = Atom String
              | String String
              | Bool Bool
              | Char Char
+             | Float Float
 
 escapeChars :: Parser Char
 escapeChars = do char '\\'
@@ -111,10 +112,36 @@ parseChar = charSpace
          <|> charSpace2
          <|> charNewline
          <|> charLetter
-  
+
+float2dig x = fst $ readFloat(x) !! 0
+parseFloat :: Parser LispVal
+parseFloat = do w <- many(digit) --whole part
+                char '.'
+                f <- many(digit) --fractional part
+                return (Float(float2dig(w ++ '.':f)))
+
+parseList :: Parser LispVal
+parseList = liftM List $ sepBy parseExpr spaces
+
+parseDottedList :: Parser LispVal
+parseDottedList = do head <- endBy parseExpr spaces
+                     tail <- char '.' >> spaces >> parseExpr
+                     return $ DottedList head tail
+
+parseQuoted :: Parser LispVal
+parseQuoted = do char '\''
+                 x <- parseExpr
+                 return $ List [Atom "quote", x]
+                 
 parseExpr :: Parser LispVal
 parseExpr = parseAtom
          <|> parseString
+         <|> parseFloat
          <|> parseNumber
          <|> parseChar
          <|> parseBool
+         <|> parseQuoted
+         <|> do char '('
+                x <- try parseList <|> parseDottedList
+                char ')'
+                return x
