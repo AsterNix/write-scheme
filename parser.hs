@@ -9,7 +9,7 @@ main = do args <- getArgs
           putStrLn (readExpr (args !! 0))
 
 symbol :: Parser Char
-symbol = oneOf "!$ %&|*+ -/: <=? > @^_ ~# "
+symbol = oneOf "!$ %&|*+ -/: <=? > @^_ ~ "
 
 readExpr :: String -> String
 readExpr input = case parse parseExpr "lisp" input of
@@ -26,6 +26,7 @@ data LispVal = Atom String
              | Number Integer
              | String String
              | Bool Bool
+             | Char Char
 
 escapeChars :: Parser Char
 escapeChars = do char '\\'
@@ -87,8 +88,33 @@ parseNumber :: Parser LispVal
 --parseNumber = liftM (Number . read) $ many1 digit
 parseNumber = numDec1 <|> numDec2 <|> numHex <|> numOct <|> numBin
 
+parseBool :: Parser LispVal
+parseBool = do char '#'
+               (char 't' >> return (Bool True)) <|> (char 'f' >> return (Bool False))
 
+charSpace :: Parser LispVal
+charSpace = do try $ string "#\\space"
+               return $ Char ' '
+charSpace2 :: Parser LispVal
+charSpace2 = do try $ string "#\\"
+                return $ Char ' '               
+charNewline :: Parser LispVal
+charNewline = do try $ string "#\\newline"
+                 return $ Char '\n'
+charLetter :: Parser LispVal
+charLetter = do try $ string "#\\"
+                c <- letter
+                return $ Char c
+
+parseChar :: Parser LispVal
+parseChar = charSpace
+         <|> charSpace2
+         <|> charNewline
+         <|> charLetter
+  
 parseExpr :: Parser LispVal
 parseExpr = parseAtom
          <|> parseString
          <|> parseNumber
+         <|> parseChar
+         <|> parseBool
