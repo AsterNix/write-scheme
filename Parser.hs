@@ -5,12 +5,45 @@ import Text.ParserCombinators.Parsec hiding (spaces)
 import Control.Monad
 import Control.Monad.Error
 import Numeric
+import System.IO
 
 main :: IO ()
-main = do
-  args <- getArgs
-  evaled <- return $ liftM show $ readExpr (args !! 0) >>= eval
-  putStrLn $ extractValue $ trapError evaled
+main = do args <- getArgs
+          case length args of
+            0 -> runRepl
+            1 -> evalAndPrint $ args !! 0
+            otherwise -> putStrLn "Takes 0 or 1 arguments"
+
+--REPL
+
+--pushes a string to stdout and flushes the buffer
+flushStr :: String -> IO ()
+flushStr str = putStr str >> hFlush stdout
+
+--pulls a line of input from user
+readPrompt :: String -> IO String
+readPrompt prompt = flushStr prompt >> getLine
+
+evalString :: String -> IO String
+evalString expr = return $ extractValue $ trapError (liftM show $ readExpr expr >>= eval)
+
+evalAndPrint :: String -> IO ()
+evalAndPrint expr = evalString expr >>= putStrLn
+
+--predicate symbols end of "loop"
+--prompt gets a result
+--action acts on prompt's result then the loop repeats
+until_ :: Monad m => (a -> Bool) -> m a -> (a -> m ()) -> m ()
+until_ pred prompt action = do
+  result <- prompt --we do this to ensure ordering
+  if pred result
+    then return ()
+    else action result >> until_ pred prompt action
+
+runRepl :: IO ()
+runRepl = until_ (== "quit") (readPrompt "Raphael>>") evalAndPrint
+
+--parser begins here--
 
 --what values an atom is allowed to start with in Scheme
 symbol :: Parser Char
