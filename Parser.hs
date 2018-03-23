@@ -12,6 +12,7 @@ main = do
   evaled <- return $ liftM show $ readExpr (args !! 0) >>= eval
   putStrLn $ extractValue $ trapError evaled
 
+--what values an atom is allowed to start with in Scheme
 symbol :: Parser Char
 symbol = oneOf "!$%&|*+-/:<=?>@^_~"
 
@@ -45,8 +46,8 @@ escapeChars = do char '\\'
                    
 parseString :: Parser LispVal
 parseString = do char '"'
---                 x <- many (noneOf "\"")
-                 x <- many $ escapeChars <|> noneOf"\"\\"
+--                 x <- many (noneOf "\"") --doesn't handle escaped values
+                 x <- many $ escapeChars <|> noneOf"\"\\" --handles escaped values
                  char '"'
                  return $ String x
 
@@ -329,10 +330,17 @@ unpackEquals arg1 arg2 (AnyUnpacker unpacker) =
          `catchError` (const $ return False)
 
 equal :: [LispVal] -> ThrowsError LispVal
+equal [(List arg1), (List arg2)] = return $ Bool $ (length arg1 == length arg2) &&
+                                                   (all equalPair $ zip arg1 arg2)
+      where equalPair (x1, x2) = case equal [x1, x2] of
+                                  --Left will not happen, as equal only errors on wrong number of arguments
+                                  Left err -> False
+                                  Right (Bool val) -> val
 equal [arg1, arg2] = do
       primitiveEquals <- liftM or $ mapM (unpackEquals arg1 arg2)
                          [AnyUnpacker unpackNum, AnyUnpacker unpackStr, AnyUnpacker unpackBool]
       eqvEquals <- eqv [arg1, arg2]
+      -- the latter half of the or pops the result out of our LispVal ADT
       return $ Bool $ (primitiveEquals || let (Bool x) = eqvEquals in x)
 equal badArgList = throwError $ NumArgs 2 badArgList      
 
