@@ -280,6 +280,7 @@ showVal (Func {params = args, vararg = varargs, body = body, closure = env}) =
   (case varargs of
      Nothing -> ""
      Just arg -> " . " ++ arg) ++ ") ...)"
+showVal otherwise              = "()"
     
 unwordsList :: [LispVal] -> String
 unwordsList = unwords . map showVal
