@@ -109,11 +109,6 @@ makeVarArgs = makeFunc . Just . showVal
 
 --parser begins here--
 
---what values an atom is allowed to start with in Scheme
-symbol :: Parser Char
-symbol = oneOf "!$%&|*+-/:<=?>@^_~"
-
-
 readOrThrow :: Parser a -> String -> ThrowsError a
 readOrThrow parser input = case parse parser "lisp" input of
   Left err  -> throwError $ Parser err
@@ -139,6 +134,10 @@ data LispVal = Atom String
                       body :: [LispVal], closure :: Env }
              | IOFunc ([LispVal] -> IOThrowsError LispVal)
              | Port Handle
+
+--what values an atom is allowed to start with in Scheme
+symbol :: Parser Char
+symbol = oneOf "!$%&|*+-/:<=?>@^_~"
 
 escapeChars :: Parser Char
 escapeChars = do char '\\'
@@ -226,9 +225,10 @@ parseChar = charSpace
 
 float2dig x = fst $ readFloat(x) !! 0
 parseFloat :: Parser LispVal
-parseFloat = do w <- many(digit) --whole part
+parseFloat = try $ do
+                w <- many1(digit) --whole part
                 char '.'
-                f <- many(digit) --fractional part
+                f <- many1(digit) --fractional part
                 return (Float(float2dig(w ++ '.':f)))
 
 parseList :: Parser LispVal
@@ -252,8 +252,8 @@ parseBacktick = do char '`'
 parseExpr :: Parser LispVal
 parseExpr = parseAtom
          <|> parseString
+         <|> parseFloat
          <|> parseNumber
---         <|> parseFloat
          <|> parseChar
          <|> parseBool
          <|> parseQuoted
@@ -276,7 +276,7 @@ showVal (PrimitiveFunc _)      = "<primitive>"
 showVal (Port _)               = "<IO port>"
 showVal (IOFunc _)             = "<IO primitive>"
 showVal (Char char)            = show char
---showVal (Float float)          = show float
+showVal (Float float)          = show float
 showVal (Func {params = args, vararg = varargs, body = body, closure = env}) =
   "(lambda (" ++ unwords (map show args) ++
   (case varargs of
@@ -293,6 +293,7 @@ eval :: Env -> LispVal -> IOThrowsError LispVal
 eval env val@(String _) = return val
 eval env val@(Number _) = return val
 eval env val@(Bool _) = return val
+eval env val@(Float _) = return val
 eval env (Atom id) = getVar env id
 eval env (List [Atom "quote", val]) = return val
 eval env (List [Atom "if", pred, conseq, alt]) =
