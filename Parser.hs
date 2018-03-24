@@ -253,7 +253,7 @@ parseExpr :: Parser LispVal
 parseExpr = parseAtom
          <|> parseString
          <|> parseNumber
-         <|> parseFloat
+--         <|> parseFloat
          <|> parseChar
          <|> parseBool
          <|> parseQuoted
@@ -275,12 +275,14 @@ showVal (DottedList head tail) = "(" ++ unwordsList head ++ " . " ++ showVal tai
 showVal (PrimitiveFunc _)      = "<primitive>"
 showVal (Port _)               = "<IO port>"
 showVal (IOFunc _)             = "<IO primitive>"
+showVal (Char char)            = show char
+--showVal (Float float)          = show float
 showVal (Func {params = args, vararg = varargs, body = body, closure = env}) =
   "(lambda (" ++ unwords (map show args) ++
   (case varargs of
      Nothing -> ""
      Just arg -> " . " ++ arg) ++ ") ...)"
-showVal otherwise              = "()"
+
     
 unwordsList :: [LispVal] -> String
 unwordsList = unwords . map showVal
@@ -334,7 +336,7 @@ apply (Func params varargs body closure) args =
         bindVarArgs arg env = case arg of
           Just argName -> liftIO $ bindVars env [(argName, List $ remainingArgs)]
           Nothing -> return env
-          
+apply notFunc args = throwError $ NotFunction "Unrecognized function" $ show notFunc
 {-apply func args = maybe (throwError $ NotFunction "Unrecognized primitive function args" func)
                         ($ args)
                         (lookup func primitives)-}
