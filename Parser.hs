@@ -531,7 +531,6 @@ equal [arg1, arg2] = do
 equal badArgList = throwError $ NumArgs 2 badArgList      
 
 
-
 --Error handling begins here--
 
 data LispError = NumArgs Integer [LispVal]
